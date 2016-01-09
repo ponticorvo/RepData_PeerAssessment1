@@ -1,25 +1,108 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "PA1_template"
+output: html_document
 ---
 
+Loading and preprocessing the data
 
-## Loading and preprocessing the data
+The first step is to move to the dirctory where the unzipped file "activity.csv" is located. Then read in the data and examine the first few lines. The final step is to change the data in the date column into the appropriate date format.
+
+```{r}
+df <- read.csv("activity.csv", header=TRUE, na.strings="NA")
+df$date <- as.Date(df$date)
+```
+
+What is mean total number of steps taken per day?
+
+The first line of code will sum the steps that share the same date giving you the total number of steps taken each day. The next set of code will create a histogram of that data. The last lines of code calculate the mean and median number of steps.
+
+```{r}
+total_steps <- tapply(df$steps, df$date, FUN=sum, na.rm=TRUE)
+
+hist(total_steps, freq=TRUE, main="Histogram of total number of steps taken each day", xlab="Steps")
+
+mean_steps <- mean(total_steps, na.rm=TRUE)
+median_steps <- median(total_steps, na.rm=TRUE)
+```
+
+The mean number of steps is
+```{r}
+mean_steps
+```
+The medium number of steps is
+```{r}
+median_steps
+```
+
+What is the average daily activity pattern?
+
+The code below plots the average number of steps taken vs the average number of steps taken and shows which 5 minute interval has the largest number of steps.
+
+```{r}
+av <- aggregate(x=list(steps=df$steps), by=list(interval=df$interval), FUN=mean, na.rm=TRUE)
+plot(av$steps~av$interval, type="l", xlab="5 minute intervals", pch=2, main= "5-minute interval vs average number of steps taken", ylab="Average number of steps taken")
+
+av[which.max(av$steps),]
+```
+
+The 835th interval contains the maximum number of steps.
+
+Imputing missing values
+
+The following code creates a function that replaces the missing data with the mean data from the aprropriate 5 minute interval. A histogram of the new set of data is displayed and mean and median steps are again calculated. 
+
+```{r}
+table(is.na(df))
+
+val_filled <- function(steps, interval) { 
+  filled <- NA
+if (!is.na(steps))
+  filled <- steps
+else
+  filled <- av[av$interval==interval, "steps"]
+return(filled)
+}
+
+df2 <- df
+df2$steps <- mapply(val_filled, df2$steps, df2$interval)
+
+total_steps2 <- tapply(df2$steps, df2$date, FUN=sum, na.rm=TRUE)
+
+hist(total_steps2, freq=TRUE, main="Histogram of total number of steps taken each day", xlab="Steps")
+
+mean_steps2 <- mean(total_steps2, na.rm=TRUE)
+median_steps2 <- median(total_steps2, na.rm=TRUE)
+```
+
+The mean number of steps is
+```{r}
+mean_steps2
+```
+The medium number of steps is
+```{r}
+median_steps2
+```
+
+The values of both are higher because all of the missing values have been replaced with actual numbers.
 
 
+Are there differences in activity patterns between weekdays and weekends?
 
-## What is mean total number of steps taken per day?
+First we create a new category that seperates the data into weekday vs weekend. Then we split the data into 2 seperate data sets and plot the average steps taken in 5 minute intervals for both sets representing the steps taken on weekdays vs weekends.
 
+```{r}
+weekdays1 <- c('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday' )
 
+df2$wday <- c('weekend','weekday')[(weekdays(df2$date) %in% weekdays1)+1L]
 
-## What is the average daily activity pattern?
+df3<-split(df2,df2$wday)
+df_weekday <- df3$weekday
+df_weekend <- df3$weekend
 
+av_weekday <- aggregate(x=list(steps=df_weekday$steps), by=list(interval=df_weekday$interval), FUN=mean, na.rm=TRUE)
+plot(av_weekday$steps~av_weekday$interval, type="l", xlab="5 minute intervals", pch=2, main= "5-minute interval vs average number of steps taken on Weekdays", ylab="Average number of steps taken")
 
-
-## Imputing missing values
-
-
-
-## Are there differences in activity patterns between weekdays and weekends?
+av_weekend <- aggregate(x=list(steps=df_weekend$steps), by=list(interval=df_weekend$interval), FUN=mean, na.rm=TRUE)
+plot(av_weekend$steps~av_weekend$interval, type="l", xlab="5 minute intervals", pch=2, main= "5-minute interval vs average number of steps taken on Weekends", ylab="Average number of steps taken")
+```
+We see much more activity on the weekends especially at the later time points of the day.
